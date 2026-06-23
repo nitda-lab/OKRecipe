@@ -19,7 +19,7 @@ export function NavBar() {
   }
 
   return (
-    <nav className="sticky top-0 z-20 mb-4 flex items-center gap-1 border-b bg-white px-4 pt-3 pb-1 text-sm">
+    <nav className="sticky top-0 z-20 mb-4 flex flex-nowrap items-center gap-0.5 overflow-x-auto border-b bg-white px-2 pt-3 pb-1 text-sm">
       {LINKS.map(({ href, label }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`)
         return (
@@ -29,8 +29,8 @@ export function NavBar() {
             aria-current={active ? 'page' : undefined}
             className={
               active
-                ? 'rounded-t border-b-2 border-black bg-gray-100 px-3 py-1 font-bold text-black'
-                : 'rounded-t px-3 py-1 font-medium text-gray-500 hover:text-black'
+                ? 'shrink-0 whitespace-nowrap rounded-t border-b-2 border-black bg-gray-100 px-2.5 py-1 font-bold text-black'
+                : 'shrink-0 whitespace-nowrap rounded-t px-2.5 py-1 font-medium text-gray-500 hover:text-black'
             }
           >
             {label}
@@ -39,7 +39,8 @@ export function NavBar() {
       })}
       <button
         onClick={logout}
-        className="ml-auto px-2 py-1 text-xs text-gray-400 hover:text-red-600"
+        className="ml-auto shrink-0 whitespace-nowrap pl-2 pr-1 text-xs text-gray-400 hover:text-red-600"
+        aria-label="ログアウト"
       >
         ログアウト
       </button>
