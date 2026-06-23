@@ -4,36 +4,77 @@ import { createBrowserSupabase } from '@/lib/supabaseBrowser'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
-  const [sent, setSent] = useState(false)
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
   const supabase = createBrowserSupabase()
 
-  async function signIn(e: React.FormEvent) {
-    e.preventDefault()
-    await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    })
-    setSent(true)
+  async function run(mode: 'login' | 'signup') {
+    setError(null)
+    setBusy(true)
+    try {
+      const fn =
+        mode === 'login'
+          ? supabase.auth.signInWithPassword({ email, password })
+          : supabase.auth.signUp({ email, password })
+      const { data, error } = await fn
+      if (error) {
+        setError(error.message)
+        return
+      }
+      if (!data.session) {
+        // メール確認が有効なまま signup した場合などセッションが無いケース
+        setError('セッションを作成できませんでした。Supabaseで「Confirm email」をOFFにしてください。')
+        return
+      }
+      window.location.assign('/inventory')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-6">
       <h1 className="text-xl font-bold">OKRecipe ログイン</h1>
-      {sent ? (
-        <p>メールに届いたリンクからログインしてください。</p>
-      ) : (
-        <form onSubmit={signIn} className="flex flex-col gap-3">
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="メールアドレス"
-            className="rounded border p-3"
-          />
-          <button className="rounded bg-black p-3 text-white">ログインリンクを送る</button>
-        </form>
-      )}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          run('login')
+        }}
+        className="flex flex-col gap-3"
+      >
+        <input
+          type="email"
+          required
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="メールアドレス"
+          className="rounded border p-3"
+        />
+        <input
+          type="password"
+          required
+          minLength={6}
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="パスワード（6文字以上）"
+          className="rounded border p-3"
+        />
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        <button disabled={busy} className="rounded bg-black p-3 text-white">
+          ログイン
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => run('signup')}
+          className="rounded border p-3"
+        >
+          新規登録（初回のみ）
+        </button>
+      </form>
     </main>
   )
 }
