@@ -16,6 +16,13 @@ export type ToolSchema = {
 
 export type AssistantMessage = { role: 'assistant'; content: string; tool_calls?: ToolCall[] }
 
+export type StreamCallbacks = { onToken?: (text: string) => void }
+
 export interface AIProvider {
   chat(messages: ChatMessage[], tools: ToolSchema[]): Promise<AssistantMessage>
+  chatStream(
+    messages: ChatMessage[],
+    tools: ToolSchema[],
+    cb?: StreamCallbacks,
+  ): Promise<AssistantMessage>
 }

@@ -67,4 +67,34 @@ describe('createNanoGptProvider', () => {
     })
     await expect(provider.chat([{ role: 'user', content: 'x' }], [])).rejects.toThrow()
   })
+
+  it('chatStream streams content tokens and returns the assembled message', async () => {
+    const sse = [
+      'data: {"choices":[{"delta":{"reasoning":"think"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"オム"}}]}\n\n',
+      'data: {"choices":[{"delta":{"content":"レツ"}}]}\n\n',
+      'data: [DONE]\n\n',
+    ]
+    const fetchFn = vi.fn(async () => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const enc = new TextEncoder()
+          for (const l of sse) controller.enqueue(enc.encode(l))
+          controller.close()
+        },
+      })
+      return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } })
+    })
+    const provider = createNanoGptProvider({
+      apiKey: 'k', baseUrl: 'https://x/v1', model: 'm', fetchFn: fetchFn as unknown as typeof fetch,
+    })
+    const tokens: string[] = []
+    const msg = await provider.chatStream([{ role: 'user', content: 'レシピ' }], [], {
+      onToken: (t) => tokens.push(t),
+    })
+    expect(tokens).toEqual(['オム', 'レツ'])
+    expect(msg.content).toBe('オムレツ')
+    const body = JSON.parse((fetchFn.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.stream).toBe(true)
+  })
 })

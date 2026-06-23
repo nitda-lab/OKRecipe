@@ -1,4 +1,5 @@
-import type { AIProvider, AssistantMessage, ChatMessage, ToolSchema } from './types'
+import type { AIProvider, AssistantMessage, ChatMessage, StreamCallbacks, ToolSchema } from './types'
+import { newStreamState, applyStreamChunk, finalizeStreamState, readSSE } from './stream'
 
 type Deps = {
   apiKey: string
@@ -11,17 +12,27 @@ type Deps = {
 export function createNanoGptProvider(deps: Deps): AIProvider {
   const doFetch = deps.fetchFn ?? fetch
   const maxTokens = deps.maxTokens ?? 2000
+
+  function buildBody(messages: ChatMessage[], tools: ToolSchema[], stream: boolean) {
+    return JSON.stringify({
+      model: deps.model,
+      messages,
+      max_tokens: maxTokens,
+      ...(stream ? { stream: true } : {}),
+      ...(tools.length > 0 ? { tools, tool_choice: 'auto' } : {}),
+    })
+  }
+
+  function headers() {
+    return { 'content-type': 'application/json', authorization: `Bearer ${deps.apiKey}` }
+  }
+
   return {
     async chat(messages: ChatMessage[], tools: ToolSchema[]): Promise<AssistantMessage> {
       const res = await doFetch(`${deps.baseUrl}/chat/completions`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${deps.apiKey}` },
-        body: JSON.stringify({
-          model: deps.model,
-          messages,
-          max_tokens: maxTokens,
-          ...(tools.length > 0 ? { tools, tool_choice: 'auto' } : {}),
-        }),
+        headers: headers(),
+        body: buildBody(messages, tools, false),
       })
       if (!res.ok) {
         const text = await res.text()
@@ -34,6 +45,26 @@ export function createNanoGptProvider(deps: Deps): AIProvider {
         content: msg?.content ?? '',
         tool_calls: msg?.tool_calls,
       }
+    },
+
+    async chatStream(
+      messages: ChatMessage[],
+      tools: ToolSchema[],
+      cb?: StreamCallbacks,
+    ): Promise<AssistantMessage> {
+      const res = await doFetch(`${deps.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: headers(),
+        body: buildBody(messages, tools, true),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`AI provider error ${res.status}: ${text}`)
+      }
+      if (!res.body) throw new Error('AI provider returned no stream body')
+      const state = newStreamState()
+      await readSSE(res.body, (obj) => applyStreamChunk(state, obj, cb?.onToken))
+      return finalizeStreamState(state)
     },
   }
 }
