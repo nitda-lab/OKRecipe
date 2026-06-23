@@ -7,7 +7,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const supabase = createBrowserSupabase()
+  const [supabase] = useState(() => createBrowserSupabase())
 
   async function run(mode: 'login' | 'signup') {
     setError(null)
