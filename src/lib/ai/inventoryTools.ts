@@ -5,6 +5,7 @@ export type PendingAction =
   | { type: 'add'; name: string; quantityText: string }
   | { type: 'update'; id: string; quantityText: string }
   | { type: 'remove'; id: string }
+  | { type: 'save_recipe'; title: string; body: string }
 
 export const INVENTORY_TOOLS: ToolSchema[] = [
   {
@@ -57,6 +58,22 @@ export const INVENTORY_TOOLS: ToolSchema[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'save_recipe',
+      description:
+        'レシピを保存する提案（実際の保存はユーザー確認後）。ユーザーが「このレシピ保存して」等と言ったときに使う。',
+      parameters: {
+        type: 'object',
+        properties: {
+          title: { type: 'string', description: 'レシピ名' },
+          body: { type: 'string', description: 'レシピ本文（Markdown。材料と手順）' },
+        },
+        required: ['title', 'body'],
+      },
+    },
+  },
 ]
 
 type Ctx = { repo: InventoryRepository; userId: string; pending: PendingAction[] }
@@ -81,6 +98,10 @@ export async function executeTool(call: ToolCall, ctx: Ctx): Promise<string> {
     case 'remove_inventory': {
       ctx.pending.push({ type: 'remove', id: args.id })
       return `削除の提案を登録しました（ユーザー確認待ち）`
+    }
+    case 'save_recipe': {
+      ctx.pending.push({ type: 'save_recipe', title: args.title, body: args.body })
+      return `レシピ「${args.title}」の保存を提案しました（ユーザー確認待ち）`
     }
     default:
       throw new Error(`unknown tool: ${call.function.name}`)

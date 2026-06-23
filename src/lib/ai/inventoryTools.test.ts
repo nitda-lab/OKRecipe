@@ -15,9 +15,17 @@ function call(name: string, args: Record<string, unknown>) {
 }
 
 describe('INVENTORY_TOOLS', () => {
-  it('exposes the four inventory tools', () => {
-    const names = INVENTORY_TOOLS.map((t) => t.function.name).sort()
-    expect(names).toEqual(['add_inventory', 'list_inventory', 'remove_inventory', 'update_inventory'])
+  it('exposes the inventory tools and save_recipe', () => {
+    const names = INVENTORY_TOOLS.map((t) => t.function.name)
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'add_inventory',
+        'list_inventory',
+        'remove_inventory',
+        'update_inventory',
+        'save_recipe',
+      ]),
+    )
   })
 })
 
@@ -58,6 +66,16 @@ describe('executeTool', () => {
     const pending: PendingAction[] = []
     await executeTool(call('remove_inventory', { id: 'id-9' }), { repo, userId: 'u1', pending })
     expect(pending).toEqual([{ type: 'remove', id: 'id-9' }])
+  })
+
+  it('save_recipe records a pending recipe save', async () => {
+    const repo = makeRepo()
+    const pending: PendingAction[] = []
+    await executeTool(
+      call('save_recipe', { title: 'オムレツ', body: '## 材料\n卵2個' }),
+      { repo, userId: 'u1', pending },
+    )
+    expect(pending).toEqual([{ type: 'save_recipe', title: 'オムレツ', body: '## 材料\n卵2個' }])
   })
 
   it('throws on unknown tool', async () => {
