@@ -16,28 +16,63 @@ export function Chat() {
   const [input, setInput] = useState('')
   const [pending, setPending] = useState<PendingAction[]>([])
   const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState<string | null>(null)
 
   async function send(text: string) {
     if (!text.trim() || loading) return
     const next = [...messages, { role: 'user' as const, content: text.trim() }]
-    setMessages(next)
+    setMessages([...next, { role: 'assistant', content: '' }])
     setInput('')
     setLoading(true)
+    setStatus(null)
+
+    let assistant = ''
+    const render = () => setMessages([...next, { role: 'assistant', content: assistant }])
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ messages: next }),
       })
-      const data = await res.json()
-      if (res.ok) {
-        setMessages([...next, { role: 'assistant', content: data.reply }])
-        setPending(data.pending ?? [])
-      } else {
-        setMessages([...next, { role: 'assistant', content: `エラー: ${data.error}` }])
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+        assistant = `エラー: ${data.error}`
+        render()
+        return
+      }
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        let nl: number
+        while ((nl = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.slice(0, nl).trim()
+          buffer = buffer.slice(nl + 1)
+          if (!line) continue
+          const ev = JSON.parse(line)
+          if (ev.type === 'token') {
+            assistant += ev.text
+            setStatus(null)
+            render()
+          } else if (ev.type === 'status') {
+            setStatus(ev.status)
+          } else if (ev.type === 'done') {
+            if (!assistant) assistant = ev.reply
+            render()
+            setPending(ev.pending ?? [])
+          } else if (ev.type === 'error') {
+            assistant = `エラー: ${ev.error}`
+            render()
+          }
+        }
       }
     } finally {
       setLoading(false)
+      setStatus(null)
     }
   }
 
@@ -93,7 +128,7 @@ export function Chat() {
             </li>
           ),
         )}
-        {loading && <li className="self-start text-gray-400">考え中…</li>}
+        {status && <li className="self-start text-sm text-gray-400">{status}</li>}
       </ul>
 
       {pending.length > 0 && (
