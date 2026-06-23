@@ -15,11 +15,13 @@ export function Recipes() {
   const [open, setOpen] = useState<Recipe | null>(null)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [loaded, setLoaded] = useState(false)
   const { show, toast } = useToast()
 
   async function load() {
     const res = await fetch('/api/recipes')
     if (res.ok) setRecipes(await res.json())
+    setLoaded(true)
   }
   useEffect(() => {
     load()
@@ -88,7 +90,9 @@ export function Recipes() {
         </div>
       </details>
 
-      {recipes.length === 0 ? (
+      {!loaded ? (
+        <p className="py-8 text-center text-gray-400">読み込み中…</p>
+      ) : recipes.length === 0 ? (
         <p className="py-8 text-center text-gray-500">
           保存済みレシピはありません。チャットで「このレシピ保存して」と頼めます。
         </p>

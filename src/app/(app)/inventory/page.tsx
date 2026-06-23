@@ -6,10 +6,12 @@ import { InventoryItemForm } from '@/components/InventoryItemForm'
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([])
+  const [loaded, setLoaded] = useState(false)
 
   async function reload() {
     const res = await fetch('/api/inventory')
     if (res.ok) setItems(await res.json())
+    setLoaded(true)
   }
   useEffect(() => {
     reload()
@@ -38,9 +40,13 @@ export default function InventoryPage() {
 
   return (
     <main className="flex flex-col gap-4">
-      <h1 className="text-lg font-bold">在庫</h1>
+      <h1 className="text-lg font-bold">冷蔵庫</h1>
       <InventoryItemForm onAdd={add} />
-      <InventoryList items={items} onUpdate={update} onRemove={remove} />
+      {loaded ? (
+        <InventoryList items={items} onUpdate={update} onRemove={remove} />
+      ) : (
+        <p className="py-8 text-center text-gray-400">読み込み中…</p>
+      )}
     </main>
   )
 }
