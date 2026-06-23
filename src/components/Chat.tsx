@@ -115,6 +115,15 @@ export function Chat() {
   }
 
   async function confirm(action: PendingAction) {
+    if (action.type === 'save_recipe') {
+      await fetch('/api/recipes', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ title: action.title, body: action.body }),
+      })
+      setPending((p) => p.filter((a) => a !== action))
+      return
+    }
     if (action.type === 'add') {
       await fetch('/api/inventory', {
         method: 'POST',
@@ -136,6 +145,7 @@ export function Chat() {
   function label(a: PendingAction) {
     if (a.type === 'add') return `追加: ${a.name} ${a.quantityText}`
     if (a.type === 'update') return `個数変更: ${a.quantityText}（id ${a.id}）`
+    if (a.type === 'save_recipe') return `レシピ保存: ${a.title}`
     return `削除: id ${a.id}`
   }
 

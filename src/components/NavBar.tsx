@@ -6,6 +6,7 @@ export function NavBar() {
       <Link href="/inventory" className="font-medium">在庫</Link>
       <Link href="/ingest" className="font-medium">取り込み</Link>
       <Link href="/chat" className="font-medium">チャット</Link>
+      <Link href="/recipes" className="font-medium">レシピ</Link>
     </nav>
   )
 }
