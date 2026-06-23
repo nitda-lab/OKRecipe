@@ -27,44 +27,15 @@ export default function LoginPage() {
         setError('セッションを作成できませんでした。Supabaseで「Confirm email」をOFFにしてください。')
         return
       }
-      window.location.assign('/inventory')
+      window.location.assign('/chat')
     } finally {
       setBusy(false)
     }
   }
 
-  async function google() {
-    setError(null)
-    setBusy(true)
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
-    if (error) {
-      setError(error.message)
-      setBusy(false)
-    }
-    // 成功時は Google へリダイレクトされるのでここには戻らない
-  }
-
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 p-6">
       <h1 className="text-xl font-bold">OKRecipe ログイン</h1>
-
-      <button
-        type="button"
-        disabled={busy}
-        onClick={google}
-        className="flex items-center justify-center gap-2 rounded border p-3 font-medium"
-      >
-        <span className="text-lg">G</span> Googleでログイン
-      </button>
-
-      <div className="flex items-center gap-2 text-xs text-gray-400">
-        <span className="h-px flex-1 bg-gray-200" />
-        または メールアドレス
-        <span className="h-px flex-1 bg-gray-200" />
-      </div>
 
       <form
         onSubmit={(e) => {
