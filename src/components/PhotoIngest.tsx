@@ -21,6 +21,8 @@ export function PhotoIngest() {
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [instruction, setInstruction] = useState('')
+  const [editing, setEditing] = useState(false)
 
   // 写真の種類を選ぶと、反映方法の既定値も合わせて切り替える（後から変更可）
   function pickKind(k: Kind) {
@@ -58,6 +60,28 @@ export function PhotoIngest() {
   }
   function addRow() {
     setRows((rs) => [...rs, { name: '', qtyText: '' }])
+  }
+
+  async function askAi() {
+    if (!instruction.trim() || editing) return
+    setEditing(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/ingest/edit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ items: rows.map((r) => ({ name: r.name, qty_text: r.qtyText })), instruction }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setRows((data.items ?? []).map((it: { name: string; qtyText: string }) => ({ name: it.name, qtyText: it.qtyText })))
+        setInstruction('')
+      } else {
+        setError(data.error ?? 'failed')
+      }
+    } finally {
+      setEditing(false)
+    }
   }
 
   async function apply() {
@@ -160,6 +184,30 @@ export function PhotoIngest() {
             >
               確定して在庫へ
             </button>
+          </div>
+
+          <div className="rounded border bg-gray-50 p-2">
+            <p className="mb-1 text-xs text-gray-500">AIに修正を頼む（例: 卵を2個に、パンを削除、牛乳を追加）</p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                askAi()
+              }}
+              className="flex gap-2"
+            >
+              <input
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                placeholder="修正の指示を入力"
+                className="flex-1 rounded border p-1 text-sm"
+              />
+              <button
+                disabled={editing}
+                className="rounded bg-gray-800 px-3 py-1 text-sm text-white disabled:opacity-50"
+              >
+                {editing ? '修正中…' : 'AIで修正'}
+              </button>
+            </form>
           </div>
         </div>
       )}

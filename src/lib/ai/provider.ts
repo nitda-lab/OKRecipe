@@ -73,7 +73,7 @@ export function createNanoGptProviderFromEnv(fetchFn?: typeof fetch): AIProvider
   return createNanoGptProvider({
     apiKey: process.env.AI_API_KEY!,
     baseUrl: process.env.AI_BASE_URL ?? 'https://nano-gpt.com/v1',
-    model: process.env.AI_CHAT_MODEL ?? 'openai/gpt-oss-120b',
+    model: process.env.AI_CHAT_MODEL ?? 'google/gemma-4-31b-it',
     maxTokens: process.env.AI_MAX_TOKENS ? Number(process.env.AI_MAX_TOKENS) : undefined,
     fetchFn,
   })
