@@ -1,9 +1,16 @@
 import type { AIProvider, AssistantMessage, ChatMessage, ToolSchema } from './types'
 
-type Deps = { apiKey: string; baseUrl: string; model: string; fetchFn?: typeof fetch }
+type Deps = {
+  apiKey: string
+  baseUrl: string
+  model: string
+  maxTokens?: number
+  fetchFn?: typeof fetch
+}
 
 export function createNanoGptProvider(deps: Deps): AIProvider {
   const doFetch = deps.fetchFn ?? fetch
+  const maxTokens = deps.maxTokens ?? 2000
   return {
     async chat(messages: ChatMessage[], tools: ToolSchema[]): Promise<AssistantMessage> {
       const res = await doFetch(`${deps.baseUrl}/chat/completions`, {
@@ -12,6 +19,7 @@ export function createNanoGptProvider(deps: Deps): AIProvider {
         body: JSON.stringify({
           model: deps.model,
           messages,
+          max_tokens: maxTokens,
           ...(tools.length > 0 ? { tools, tool_choice: 'auto' } : {}),
         }),
       })
@@ -35,6 +43,7 @@ export function createNanoGptProviderFromEnv(fetchFn?: typeof fetch): AIProvider
     apiKey: process.env.AI_API_KEY!,
     baseUrl: process.env.AI_BASE_URL ?? 'https://nano-gpt.com/v1',
     model: process.env.AI_CHAT_MODEL ?? 'openai/gpt-oss-120b',
+    maxTokens: process.env.AI_MAX_TOKENS ? Number(process.env.AI_MAX_TOKENS) : undefined,
     fetchFn,
   })
 }

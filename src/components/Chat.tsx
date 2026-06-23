@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 import type { PendingAction } from '@/lib/ai/inventoryTools'
 
 type Msg = { role: 'user' | 'assistant'; content: string }
@@ -78,14 +79,20 @@ export function Chat() {
       </div>
 
       <ul className="flex flex-col gap-2">
-        {messages.map((m, i) => (
-          <li
-            key={i}
-            className={m.role === 'user' ? 'self-end rounded bg-blue-100 p-2' : 'self-start rounded bg-gray-100 p-2'}
-          >
-            {m.content}
-          </li>
-        ))}
+        {messages.map((m, i) =>
+          m.role === 'user' ? (
+            <li key={i} className="max-w-[85%] self-end rounded bg-blue-100 p-2">
+              {m.content}
+            </li>
+          ) : (
+            <li
+              key={i}
+              className="max-w-[85%] self-start rounded bg-gray-100 p-2 text-sm [&_h1]:text-base [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h3]:font-bold [&_li]:my-0.5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_strong]:font-semibold [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
+            >
+              <ReactMarkdown>{m.content}</ReactMarkdown>
+            </li>
+          ),
+        )}
         {loading && <li className="self-start text-gray-400">考え中…</li>}
       </ul>
 

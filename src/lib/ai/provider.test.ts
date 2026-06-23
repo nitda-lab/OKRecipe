@@ -25,6 +25,19 @@ describe('createNanoGptProvider', () => {
     expect((init as RequestInit).headers).toMatchObject({ authorization: 'Bearer k' })
   })
 
+  it('sends a generous max_tokens so replies are not truncated', async () => {
+    const fetchFn = fakeFetch({
+      choices: [{ message: { role: 'assistant', content: 'hi' }, finish_reason: 'stop' }],
+    })
+    const provider = createNanoGptProvider({
+      apiKey: 'k', baseUrl: 'https://x/v1', model: 'm', maxTokens: 1234,
+      fetchFn: fetchFn as unknown as typeof fetch,
+    })
+    await provider.chat([{ role: 'user', content: 'hello' }], [])
+    const body = JSON.parse((fetchFn.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.max_tokens).toBe(1234)
+  })
+
   it('returns tool_calls when present', async () => {
     const fetchFn = fakeFetch({
       choices: [
