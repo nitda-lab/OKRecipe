@@ -24,28 +24,27 @@ export function PhotoIngest() {
   const [instruction, setInstruction] = useState('')
   const [editing, setEditing] = useState(false)
 
-  // 写真の種類を選ぶと、反映方法の既定値も合わせて切り替える（後から変更可）
-  function pickKind(k: Kind) {
-    setKind(k)
-    setMode(k === 'receipt' ? 'add' : 'overwrite')
-  }
-
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files ?? [])
+    if (files.length === 0) return
     setLoading(true)
     setError(null)
     setDone(false)
     try {
-      const image = await fileToDataUrl(file)
-      const res = await fetch('/api/ingest', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ image, kind }),
-      })
-      const data = await res.json()
-      if (res.ok) setRows(data.items ?? [])
-      else setError(data.error ?? 'failed')
+      const collected: Row[] = []
+      for (const file of files) {
+        const image = await fileToDataUrl(file)
+        const res = await fetch('/api/ingest', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ image, kind }),
+        })
+        const data = await res.json()
+        if (res.ok) collected.push(...(data.items ?? []))
+        else setError(data.error ?? 'failed')
+      }
+      // 複数枚・追加選択を積み上げられるよう既存の下書きに追記する
+      setRows((prev) => [...prev, ...collected])
     } finally {
       setLoading(false)
       e.target.value = ''
@@ -118,10 +117,10 @@ export function PhotoIngest() {
       <div className="flex flex-col gap-1">
         <span className="text-xs text-gray-500">写真の種類</span>
         <div className="flex gap-2 text-sm">
-          <button onClick={() => pickKind('receipt')} className={pill(kind === 'receipt')}>
+          <button onClick={() => setKind('receipt')} className={pill(kind === 'receipt')}>
             レシート
           </button>
-          <button onClick={() => pickKind('fridge')} className={pill(kind === 'fridge')}>
+          <button onClick={() => setKind('fridge')} className={pill(kind === 'fridge')}>
             冷蔵庫
           </button>
         </div>
@@ -140,8 +139,8 @@ export function PhotoIngest() {
       </div>
 
       <label className="rounded border border-dashed p-4 text-center text-sm text-gray-600">
-        {loading ? '処理中…' : 'タップして写真を撮る / 選ぶ'}
-        <input type="file" accept="image/*" capture="environment" onChange={onPick} className="hidden" />
+        {loading ? '処理中…' : 'タップして写真を撮る / 選ぶ（複数可）'}
+        <input type="file" accept="image/*" multiple onChange={onPick} className="hidden" />
       </label>
 
       {error && <p className="text-sm text-red-600">エラー: {error}</p>}

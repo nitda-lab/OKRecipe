@@ -19,15 +19,15 @@ export function InventoryItemForm({ onAdd }: { onAdd: (name: string, quantityTex
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="食材名"
-        className="flex-1 rounded border p-2"
+        className="w-0 min-w-0 flex-1 rounded border p-2"
       />
       <input
         value={quantityText}
         onChange={(e) => setQuantityText(e.target.value)}
-        placeholder="例: 2個 / 一人前分"
-        className="w-32 rounded border p-2"
+        placeholder="例:2個"
+        className="w-20 shrink-0 rounded border p-2"
       />
-      <button className="rounded bg-black px-3 text-white">追加</button>
+      <button className="shrink-0 rounded bg-black px-3 text-white">追加</button>
     </form>
   )
 }

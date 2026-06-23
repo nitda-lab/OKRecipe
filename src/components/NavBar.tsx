@@ -4,9 +4,9 @@ import { usePathname } from 'next/navigation'
 import { createBrowserSupabase } from '@/lib/supabaseBrowser'
 
 const LINKS = [
+  { href: '/chat', label: 'チャット' },
   { href: '/inventory', label: '冷蔵庫' },
   { href: '/ingest', label: '取り込み' },
-  { href: '/chat', label: 'チャット' },
   { href: '/recipes', label: 'レシピ' },
 ]
 
