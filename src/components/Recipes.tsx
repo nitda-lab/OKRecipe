@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { normalizeMarkdown } from '@/lib/markdown'
+import { useToast } from '@/components/useToast'
 
 type Recipe = { id: string; title: string; body: string; createdAt: string }
 
@@ -13,6 +15,7 @@ export function Recipes() {
   const [open, setOpen] = useState<Recipe | null>(null)
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const { show, toast } = useToast()
 
   async function load() {
     const res = await fetch('/api/recipes')
@@ -32,11 +35,13 @@ export function Recipes() {
     setTitle('')
     setBody('')
     load()
+    show('レシピを保存しました')
   }
   async function remove(id: string) {
     await fetch(`/api/recipes/${id}`, { method: 'DELETE' })
     if (open?.id === id) setOpen(null)
     load()
+    show('レシピを削除しました')
   }
 
   if (open) {
@@ -47,11 +52,12 @@ export function Recipes() {
         </button>
         <h1 className="text-lg font-bold">{open.title}</h1>
         <div className={MD_CLASS}>
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{open.body}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(open.body)}</ReactMarkdown>
         </div>
         <button onClick={() => remove(open.id)} className="self-start text-sm text-red-600">
           このレシピを削除
         </button>
+        {toast}
       </main>
     )
   }
@@ -100,6 +106,7 @@ export function Recipes() {
           ))}
         </ul>
       )}
+      {toast}
     </main>
   )
 }

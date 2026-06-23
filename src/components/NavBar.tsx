@@ -12,7 +12,7 @@ const LINKS = [
 export function NavBar() {
   const pathname = usePathname()
   return (
-    <nav className="mb-4 flex gap-1 border-b pb-1 text-sm">
+    <nav className="sticky top-0 z-20 mb-4 flex gap-1 border-b bg-white px-4 pt-3 pb-1 text-sm">
       {LINKS.map(({ href, label }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`)
         return (

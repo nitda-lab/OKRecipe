@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { PendingAction } from '@/lib/ai/inventoryTools'
+import { normalizeMarkdown } from '@/lib/markdown'
+import { useToast } from '@/components/useToast'
 
 type Msg = { role: 'user' | 'assistant'; content: string }
 type ConversationSummary = { id: string; title: string; updatedAt: string }
@@ -22,6 +24,7 @@ export function Chat() {
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [conversations, setConversations] = useState<ConversationSummary[]>([])
   const [showHistory, setShowHistory] = useState(false)
+  const { show, toast } = useToast()
 
   async function loadConversations() {
     const res = await fetch('/api/conversations')
@@ -122,6 +125,7 @@ export function Chat() {
         body: JSON.stringify({ title: action.title, body: action.body }),
       })
       setPending((p) => p.filter((a) => a !== action))
+      show(`レシピ「${action.title}」を保存しました`)
       return
     }
     if (action.type === 'add') {
@@ -130,14 +134,17 @@ export function Chat() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ name: action.name, quantityText: action.quantityText }),
       })
+      show('在庫に追加しました')
     } else if (action.type === 'update') {
       await fetch(`/api/inventory/${action.id}`, {
         method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ quantityText: action.quantityText }),
       })
+      show('在庫を更新しました')
     } else {
       await fetch(`/api/inventory/${action.id}`, { method: 'DELETE' })
+      show('在庫から削除しました')
     }
     setPending((p) => p.filter((a) => a !== action))
   }
@@ -211,7 +218,7 @@ export function Chat() {
               key={i}
               className="max-w-full self-start overflow-x-auto rounded bg-gray-100 p-2 text-sm [&_h1]:text-base [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h3]:font-bold [&_li]:my-0.5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_strong]:font-semibold [&_table]:my-2 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:px-2 [&_td]:py-1 [&_td]:align-top [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-200 [&_th]:px-2 [&_th]:py-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
             >
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(m.content)}</ReactMarkdown>
             </li>
           ),
         )}
@@ -251,6 +258,7 @@ export function Chat() {
           送信
         </button>
       </form>
+      {toast}
     </main>
   )
 }

@@ -11,7 +11,7 @@ type Deps = {
 
 export function createNanoGptProvider(deps: Deps): AIProvider {
   const doFetch = deps.fetchFn ?? fetch
-  const maxTokens = deps.maxTokens ?? 2000
+  const maxTokens = deps.maxTokens ?? 4000
 
   function buildBody(messages: ChatMessage[], tools: ToolSchema[], stream: boolean) {
     return JSON.stringify({
