@@ -7,6 +7,12 @@
   color-scheme: light;
 }
 
+/* スクロールバーの有無でページ幅が変わらないよう、常に余白を確保する。
+   これでどのメニューでも横幅が一定になる。 */
+html {
+  scrollbar-gutter: stable;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
