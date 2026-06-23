@@ -1,9 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type Kind = 'receipt' | 'fridge'
 type Mode = 'add' | 'overwrite'
 type Row = { name: string; qtyText: string }
+type Staged = { file: File; url: string }
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -17,6 +18,7 @@ function fileToDataUrl(file: File): Promise<string> {
 export function PhotoIngest() {
   const [kind, setKind] = useState<Kind>('receipt')
   const [mode, setMode] = useState<Mode>('add')
+  const [staged, setStaged] = useState<Staged[]>([])
   const [rows, setRows] = useState<Row[]>([])
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -24,16 +26,38 @@ export function PhotoIngest() {
   const [instruction, setInstruction] = useState('')
   const [editing, setEditing] = useState(false)
 
-  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+  // アンマウント時にプレビュー用のオブジェクトURLを解放
+  useEffect(() => {
+    return () => staged.forEach((s) => URL.revokeObjectURL(s.url))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function onAddPhotos(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
     if (files.length === 0) return
+    setDone(false)
+    setStaged((prev) => [...prev, ...files.map((file) => ({ file, url: URL.createObjectURL(file) }))])
+    e.target.value = ''
+  }
+
+  function removeStaged(i: number) {
+    setStaged((prev) => {
+      const target = prev[i]
+      if (target) URL.revokeObjectURL(target.url)
+      return prev.filter((_, j) => j !== i)
+    })
+  }
+
+  // 溜めた写真をまとめてAIへ送り、抽出結果を下書きに反映
+  async function send() {
+    if (staged.length === 0 || loading) return
     setLoading(true)
     setError(null)
     setDone(false)
     try {
       const collected: Row[] = []
-      for (const file of files) {
-        const image = await fileToDataUrl(file)
+      for (const s of staged) {
+        const image = await fileToDataUrl(s.file)
         const res = await fetch('/api/ingest', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -43,11 +67,11 @@ export function PhotoIngest() {
         if (res.ok) collected.push(...(data.items ?? []))
         else setError(data.error ?? 'failed')
       }
-      // 複数枚・追加選択を積み上げられるよう既存の下書きに追記する
       setRows((prev) => [...prev, ...collected])
+      staged.forEach((s) => URL.revokeObjectURL(s.url))
+      setStaged([])
     } finally {
       setLoading(false)
-      e.target.value = ''
     }
   }
 
@@ -138,10 +162,37 @@ export function PhotoIngest() {
         </div>
       </div>
 
-      <label className="rounded border border-dashed p-4 text-center text-sm text-gray-600">
-        {loading ? '処理中…' : 'タップして写真を撮る / 選ぶ（複数可）'}
-        <input type="file" accept="image/*" multiple onChange={onPick} className="hidden" />
+      <label className="rounded border border-dashed p-3 text-center text-sm text-gray-600">
+        ＋ 写真を追加（複数可）
+        <input type="file" accept="image/*" multiple onChange={onAddPhotos} className="hidden" />
       </label>
+
+      {staged.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-4 gap-2">
+            {staged.map((s, i) => (
+              <div key={s.url} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={s.url} alt="" className="h-16 w-full rounded border object-cover" />
+                <button
+                  onClick={() => removeStaged(i)}
+                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black text-xs text-white"
+                  aria-label="削除"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={send}
+            disabled={loading}
+            className="self-start rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+          >
+            {loading ? 'AIが読み取り中…' : `送信（${staged.length}枚をAIで読み取り）`}
+          </button>
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-600">エラー: {error}</p>}
       {done && <p className="text-sm text-green-700">在庫に反映しました。</p>}
@@ -158,13 +209,13 @@ export function PhotoIngest() {
                   value={r.name}
                   onChange={(e) => update(i, { name: e.target.value })}
                   placeholder="食材名"
-                  className="flex-1 rounded border p-1"
+                  className="w-0 min-w-0 flex-1 rounded border p-1"
                 />
                 <input
                   value={r.qtyText}
                   onChange={(e) => update(i, { qtyText: e.target.value })}
                   placeholder="個数"
-                  className="w-24 rounded border p-1"
+                  className="w-20 shrink-0 rounded border p-1"
                 />
                 <button onClick={() => removeRow(i)} className="px-2 text-red-600" aria-label="行を削除">
                   ×
@@ -198,11 +249,11 @@ export function PhotoIngest() {
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
                 placeholder="修正の指示を入力"
-                className="flex-1 rounded border p-1 text-sm"
+                className="w-0 min-w-0 flex-1 rounded border p-1 text-sm"
               />
               <button
                 disabled={editing}
-                className="rounded bg-gray-800 px-3 py-1 text-sm text-white disabled:opacity-50"
+                className="shrink-0 rounded bg-gray-800 px-3 py-1 text-sm text-white disabled:opacity-50"
               >
                 {editing ? '修正中…' : 'AIで修正'}
               </button>
