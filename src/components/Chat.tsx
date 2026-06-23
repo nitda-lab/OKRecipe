@@ -1,10 +1,11 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { PendingAction } from '@/lib/ai/inventoryTools'
 
 type Msg = { role: 'user' | 'assistant'; content: string }
+type ConversationSummary = { id: string; title: string; updatedAt: string }
 
 const QUICK = [
   'ありもので作れるレシピを教えて',
@@ -18,6 +19,40 @@ export function Chat() {
   const [pending, setPending] = useState<PendingAction[]>([])
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
+  const [conversationId, setConversationId] = useState<string | null>(null)
+  const [conversations, setConversations] = useState<ConversationSummary[]>([])
+  const [showHistory, setShowHistory] = useState(false)
+
+  async function loadConversations() {
+    const res = await fetch('/api/conversations')
+    if (res.ok) setConversations(await res.json())
+  }
+  useEffect(() => {
+    loadConversations()
+  }, [])
+
+  function newConversation() {
+    setConversationId(null)
+    setMessages([])
+    setPending([])
+    setShowHistory(false)
+  }
+
+  async function openConversation(id: string) {
+    const res = await fetch(`/api/conversations/${id}`)
+    if (res.ok) {
+      setMessages(await res.json())
+      setConversationId(id)
+      setPending([])
+      setShowHistory(false)
+    }
+  }
+
+  async function deleteConversation(id: string) {
+    await fetch(`/api/conversations/${id}`, { method: 'DELETE' })
+    if (id === conversationId) newConversation()
+    loadConversations()
+  }
 
   async function send(text: string) {
     if (!text.trim() || loading) return
@@ -34,7 +69,7 @@ export function Chat() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, conversationId }),
       })
       if (!res.ok || !res.body) {
         const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
@@ -65,6 +100,8 @@ export function Chat() {
             if (!assistant) assistant = ev.reply
             render()
             setPending(ev.pending ?? [])
+            if (ev.conversationId) setConversationId(ev.conversationId)
+            loadConversations()
           } else if (ev.type === 'error') {
             assistant = `エラー: ${ev.error}`
             render()
@@ -104,7 +141,46 @@ export function Chat() {
 
   return (
     <main className="flex flex-col gap-3">
-      <h1 className="text-lg font-bold">チャット</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-lg font-bold">チャット</h1>
+        <div className="flex gap-2 text-xs">
+          <button onClick={() => setShowHistory((v) => !v)} className="rounded border px-2 py-1">
+            履歴
+          </button>
+          <button onClick={newConversation} className="rounded border px-2 py-1">
+            新規会話
+          </button>
+        </div>
+      </div>
+
+      {showHistory && (
+        <div className="rounded border bg-white p-2">
+          <p className="mb-1 text-xs font-medium text-gray-500">過去の会話</p>
+          {conversations.length === 0 ? (
+            <p className="text-xs text-gray-400">まだ会話がありません。</p>
+          ) : (
+            <ul className="flex flex-col">
+              {conversations.map((c) => (
+                <li key={c.id} className="flex items-center gap-2 border-b py-1 last:border-0">
+                  <button
+                    onClick={() => openConversation(c.id)}
+                    className={`flex-1 truncate text-left text-sm ${c.id === conversationId ? 'font-bold' : ''}`}
+                  >
+                    {c.title}
+                  </button>
+                  <button
+                    onClick={() => deleteConversation(c.id)}
+                    className="px-1 text-xs text-red-600"
+                    aria-label="会話を削除"
+                  >
+                    削除
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {QUICK.map((q) => (

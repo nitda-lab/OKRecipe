@@ -1,5 +1,6 @@
 import { getServerSupabase } from '@/lib/supabaseServer'
 import { SupabaseInventoryRepository } from '@/repositories/supabaseInventoryRepository'
+import { SupabaseConversationRepository } from '@/repositories/supabaseConversationRepository'
 import { createNanoGptProviderFromEnv } from '@/lib/ai/provider'
 import { runChatAgentStream } from '@/lib/ai/chatAgent'
 import type { ChatMessage } from '@/lib/ai/types'
@@ -17,7 +18,12 @@ export async function POST(req: Request) {
     .filter((m: { role: string; content: string }) => m.role === 'user' || m.role === 'assistant')
     .map((m: { role: 'user' | 'assistant'; content: string }) => ({ role: m.role, content: m.content }))
 
-  const repo = new SupabaseInventoryRepository(sb)
+  const lastUser = [...history].reverse().find((m) => m.role === 'user')
+  const incomingConversationId: string | null =
+    typeof body?.conversationId === 'string' ? body.conversationId : null
+
+  const inventoryRepo = new SupabaseInventoryRepository(sb)
+  const convoRepo = new SupabaseConversationRepository(sb)
   const provider = createNanoGptProviderFromEnv()
   const userId = auth.user.id
 
@@ -26,11 +32,28 @@ export async function POST(req: Request) {
     async start(controller) {
       const send = (event: unknown) => controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
       try {
-        const out = await runChatAgentStream({ provider, repo, userId }, history, {
+        const out = await runChatAgentStream({ provider, repo: inventoryRepo, userId }, history, {
           onToken: (text) => send({ type: 'token', text }),
           onStatus: (status) => send({ type: 'status', status }),
         })
-        send({ type: 'done', reply: out.reply, pending: out.pending })
+
+        // 会話を永続化（ストリーム完了後にまとめて）。失敗してもチャット自体は壊さない。
+        let conversationId = incomingConversationId
+        try {
+          if (!conversationId) {
+            const title = (lastUser?.content ?? '新しい会話').slice(0, 30)
+            conversationId = await convoRepo.create(userId, title)
+          }
+          const toSave = [
+            ...(lastUser ? [{ role: 'user' as const, content: lastUser.content }] : []),
+            { role: 'assistant' as const, content: out.reply },
+          ]
+          await convoRepo.appendMessages(userId, conversationId, toSave)
+        } catch {
+          // 永続化失敗は握りつぶす（履歴が残らないだけ）
+        }
+
+        send({ type: 'done', reply: out.reply, pending: out.pending, conversationId })
       } catch (e) {
         send({ type: 'error', error: (e as Error).message })
       } finally {
