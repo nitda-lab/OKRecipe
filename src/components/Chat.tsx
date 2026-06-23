@@ -6,6 +6,7 @@ import type { PendingAction } from '@/lib/ai/inventoryTools'
 import { normalizeMarkdown } from '@/lib/markdown'
 import { useToast } from '@/components/useToast'
 import { MARKDOWN_TYPO } from '@/components/markdownStyles'
+import { ui } from '@/components/ui'
 
 type Msg = { role: 'user' | 'assistant'; content: string }
 type ConversationSummary = { id: string; title: string; updatedAt: string }
@@ -167,37 +168,37 @@ export function Chat() {
   return (
     <main className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">チャット</h1>
-        <div className="flex gap-2 text-xs">
-          <button onClick={() => setShowHistory((v) => !v)} className="rounded border px-2 py-1">
+        <h1 className={ui.h1}>チャット</h1>
+        <div className="flex gap-2">
+          <button onClick={() => setShowHistory((v) => !v)} className={ui.btnSecondarySm}>
             履歴
           </button>
-          <button onClick={newConversation} className="rounded border px-2 py-1">
+          <button onClick={newConversation} className={ui.btnSecondarySm}>
             新規会話
           </button>
         </div>
       </div>
 
       {showHistory && (
-        <div className="rounded border bg-white p-2">
-          <p className="mb-1 text-xs font-medium text-gray-500">過去の会話</p>
+        <div className={`${ui.card} p-3`}>
+          <p className="mb-1 text-xs font-medium text-zinc-500">過去の会話</p>
           {conversations.length === 0 ? (
-            <p className="text-xs text-gray-400">まだ会話がありません。</p>
+            <p className="text-xs text-zinc-400">まだ会話がありません。</p>
           ) : (
-            <ul className="flex flex-col">
+            <ul className="flex flex-col divide-y divide-zinc-100">
               {conversations.map((c) => (
-                <li key={c.id} className="flex items-center gap-2 border-b py-1 last:border-0">
+                <li key={c.id} className="flex items-center gap-2 py-1.5">
                   <button onClick={() => openConversation(c.id)} className="min-w-0 flex-1 text-left">
                     <span
-                      className={`block truncate text-sm ${c.id === conversationId ? 'font-bold' : ''}`}
+                      className={`block truncate text-sm ${c.id === conversationId ? 'font-semibold text-zinc-900' : 'text-zinc-700'}`}
                     >
                       {c.title}
                     </span>
-                    <span className="block text-xs text-gray-400">{formatDateTime(c.updatedAt)}</span>
+                    <span className="block text-xs text-zinc-400">{formatDateTime(c.updatedAt)}</span>
                   </button>
                   <button
                     onClick={() => deleteConversation(c.id)}
-                    className="px-1 text-xs text-red-600"
+                    className="px-1 text-xs text-zinc-400 transition-colors hover:text-red-600"
                     aria-label="会話を削除"
                   >
                     削除
@@ -211,38 +212,38 @@ export function Chat() {
 
       <div className="flex flex-wrap gap-2">
         {QUICK.map((q) => (
-          <button key={q} onClick={() => send(q)} className="rounded-full border px-3 py-1 text-xs">
+          <button key={q} onClick={() => send(q)} className={ui.chip}>
             {q}
           </button>
         ))}
       </div>
 
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-2.5">
         {messages.map((m, i) =>
           m.role === 'user' ? (
-            <li key={i} className="max-w-[85%] self-end rounded bg-blue-100 p-2">
+            <li key={i} className="max-w-[85%] self-end rounded-2xl rounded-br-sm bg-zinc-900 px-3.5 py-2 text-sm text-white">
               {m.content}
             </li>
           ) : (
             <li
               key={i}
-              className={`max-w-full self-start overflow-x-auto rounded bg-gray-100 p-2 text-sm ${MARKDOWN_TYPO}`}
+              className={`max-w-full self-start overflow-x-auto rounded-2xl rounded-bl-sm border border-zinc-200 bg-white px-3.5 py-2 text-sm text-zinc-800 shadow-sm ${MARKDOWN_TYPO}`}
             >
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(m.content)}</ReactMarkdown>
             </li>
           ),
         )}
-        {status && <li className="self-start text-sm text-gray-400">{status}</li>}
+        {status && <li className="self-start text-sm text-zinc-400">{status}</li>}
       </ul>
 
       {pending.length > 0 && (
-        <div className="rounded border border-amber-300 bg-amber-50 p-2">
-          <p className="mb-1 text-sm font-medium">在庫への提案（確認してください）</p>
-          <ul className="flex flex-col gap-1">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <p className="mb-1.5 text-sm font-medium text-amber-900">確認してください</p>
+          <ul className="flex flex-col gap-1.5">
             {pending.map((a, i) => (
-              <li key={i} className="flex items-center justify-between gap-2 text-sm">
-                <span>{label(a)}</span>
-                <button onClick={() => confirm(a)} className="rounded bg-black px-2 py-1 text-xs text-white">
+              <li key={i} className="flex items-center justify-between gap-2 text-sm text-zinc-700">
+                <span className="truncate">{label(a)}</span>
+                <button onClick={() => confirm(a)} className={`${ui.btnPrimarySm} shrink-0`}>
                   反映
                 </button>
               </li>
@@ -256,15 +257,15 @@ export function Chat() {
           e.preventDefault()
           send(input)
         }}
-        className="mt-2 flex gap-2"
+        className="sticky bottom-0 mt-2 flex gap-2 bg-zinc-50 py-2"
       >
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="メッセージを入力"
-          className="flex-1 rounded border p-2"
+          className={`${ui.input} flex-1`}
         />
-        <button className="rounded bg-black px-3 text-white" disabled={loading}>
+        <button className={`${ui.btnPrimary} shrink-0`} disabled={loading}>
           送信
         </button>
       </form>

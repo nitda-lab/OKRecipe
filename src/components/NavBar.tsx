@@ -19,31 +19,35 @@ export function NavBar() {
   }
 
   return (
-    <nav className="sticky top-0 z-20 mb-4 flex flex-nowrap items-center gap-0.5 overflow-x-auto border-b bg-white px-2 pt-3 pb-1 text-sm">
-      {LINKS.map(({ href, label }) => {
-        const active = pathname === href || pathname.startsWith(`${href}/`)
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? 'page' : undefined}
-            className={
-              active
-                ? 'shrink-0 whitespace-nowrap rounded-t border-b-2 border-black bg-gray-100 px-2.5 py-1 font-bold text-black'
-                : 'shrink-0 whitespace-nowrap rounded-t px-2.5 py-1 font-medium text-gray-500 hover:text-black'
-            }
-          >
-            {label}
-          </Link>
-        )
-      })}
-      <button
-        onClick={logout}
-        className="ml-auto shrink-0 whitespace-nowrap pl-2 pr-1 text-xs text-gray-400 hover:text-red-600"
-        aria-label="ログアウト"
-      >
-        ログアウト
-      </button>
-    </nav>
+    <header className="sticky top-0 z-20 mb-4 border-b border-zinc-200 bg-white/80 backdrop-blur">
+      <div className="flex items-center justify-between px-4 pt-3">
+        <span className="text-sm font-semibold tracking-tight text-zinc-900">OKRecipe</span>
+        <button
+          onClick={logout}
+          className="text-xs text-zinc-400 transition-colors hover:text-zinc-700"
+        >
+          ログアウト
+        </button>
+      </div>
+      <nav className="flex flex-nowrap items-center gap-1 overflow-x-auto px-2 pt-1">
+        {LINKS.map(({ href, label }) => {
+          const active = pathname === href || pathname.startsWith(`${href}/`)
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? 'page' : undefined}
+              className={
+                active
+                  ? 'shrink-0 whitespace-nowrap border-b-2 border-zinc-900 px-3 py-2 text-sm font-semibold text-zinc-900'
+                  : 'shrink-0 whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-sm font-medium text-zinc-400 transition-colors hover:text-zinc-700'
+              }
+            >
+              {label}
+            </Link>
+          )
+        })}
+      </nav>
+    </header>
   )
 }

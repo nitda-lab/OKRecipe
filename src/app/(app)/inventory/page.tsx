@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type { InventoryItem } from '@/domain/inventory'
 import { InventoryList } from '@/components/InventoryList'
 import { InventoryItemForm } from '@/components/InventoryItemForm'
+import { ui } from '@/components/ui'
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([])
@@ -40,12 +41,12 @@ export default function InventoryPage() {
 
   return (
     <main className="flex flex-col gap-4">
-      <h1 className="text-lg font-bold">冷蔵庫</h1>
+      <h1 className={ui.h1}>冷蔵庫</h1>
       <InventoryItemForm onAdd={add} />
       {loaded ? (
         <InventoryList items={items} onUpdate={update} onRemove={remove} />
       ) : (
-        <p className="py-8 text-center text-gray-400">読み込み中…</p>
+        <p className="py-10 text-center text-sm text-zinc-400">読み込み中…</p>
       )}
     </main>
   )

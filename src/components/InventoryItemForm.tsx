@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { ui } from '@/components/ui'
 
 export function InventoryItemForm({ onAdd }: { onAdd: (name: string, quantityText: string) => void }) {
   const [name, setName] = useState('')
@@ -19,15 +20,15 @@ export function InventoryItemForm({ onAdd }: { onAdd: (name: string, quantityTex
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="食材名"
-        className="w-0 min-w-0 flex-1 rounded border p-2"
+        className={`${ui.input} w-0 min-w-0 flex-1`}
       />
       <input
         value={quantityText}
         onChange={(e) => setQuantityText(e.target.value)}
         placeholder="例:2個"
-        className="w-20 shrink-0 rounded border p-2"
+        className={`${ui.input} w-20 shrink-0`}
       />
-      <button className="shrink-0 rounded bg-black px-3 text-white">追加</button>
+      <button className={`${ui.btnPrimary} shrink-0`}>追加</button>
     </form>
   )
 }

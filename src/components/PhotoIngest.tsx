@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { ui } from '@/components/ui'
 
 type Kind = 'receipt' | 'fridge'
 type Mode = 'add' | 'overwrite'
@@ -131,12 +132,11 @@ export function PhotoIngest() {
     }
   }
 
-  const pill = (active: boolean) =>
-    `rounded-full border px-3 py-1 ${active ? 'border-black bg-black text-white' : 'border-gray-300 text-gray-600'}`
+  const pill = (active: boolean) => (active ? ui.chipActive : ui.chip)
 
   return (
     <main className="flex flex-col gap-3">
-      <h1 className="text-lg font-bold">写真で取り込み</h1>
+      <h1 className={ui.h1}>写真で取り込み</h1>
 
       <div className="flex flex-col gap-1">
         <span className="text-xs text-gray-500">写真の種類</span>
@@ -162,7 +162,7 @@ export function PhotoIngest() {
         </div>
       </div>
 
-      <label className="rounded border border-dashed p-3 text-center text-sm text-gray-600">
+      <label className="cursor-pointer rounded-xl border border-dashed border-zinc-300 bg-white p-4 text-center text-sm text-zinc-500 transition-colors hover:border-zinc-400 hover:bg-zinc-50">
         ＋ 写真を追加（複数可）
         <input type="file" accept="image/*" multiple onChange={onAddPhotos} className="hidden" />
       </label>
@@ -184,11 +184,7 @@ export function PhotoIngest() {
               </div>
             ))}
           </div>
-          <button
-            onClick={send}
-            disabled={loading}
-            className="self-start rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
-          >
+          <button onClick={send} disabled={loading} className={`${ui.btnPrimary} self-start`}>
             {loading ? 'AIが読み取り中…' : `送信（${staged.length}枚をAIで読み取り）`}
           </button>
         </div>
@@ -199,45 +195,45 @@ export function PhotoIngest() {
 
       {rows.length > 0 && (
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium">
+          <p className="text-sm font-medium text-zinc-700">
             確認・編集（{mode === 'overwrite' ? '確定で現在の在庫を置き換え' : '確定で在庫に加算'}）
           </p>
-          <ul className="flex flex-col gap-1">
+          <ul className={`${ui.card} flex flex-col divide-y divide-zinc-100`}>
             {rows.map((r, i) => (
-              <li key={i} className="flex gap-2">
+              <li key={i} className="flex gap-2 p-2">
                 <input
                   value={r.name}
                   onChange={(e) => update(i, { name: e.target.value })}
                   placeholder="食材名"
-                  className="w-0 min-w-0 flex-1 rounded border p-1"
+                  className={`${ui.input} w-0 min-w-0 flex-1`}
                 />
                 <input
                   value={r.qtyText}
                   onChange={(e) => update(i, { qtyText: e.target.value })}
                   placeholder="個数"
-                  className="w-20 shrink-0 rounded border p-1"
+                  className={`${ui.input} w-20 shrink-0`}
                 />
-                <button onClick={() => removeRow(i)} className="px-2 text-red-600" aria-label="行を削除">
+                <button
+                  onClick={() => removeRow(i)}
+                  className="flex w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                  aria-label="行を削除"
+                >
                   ×
                 </button>
               </li>
             ))}
           </ul>
           <div className="flex gap-2">
-            <button onClick={addRow} className="rounded border px-3 py-1 text-sm">
+            <button onClick={addRow} className={ui.btnSecondarySm}>
               行を追加
             </button>
-            <button
-              onClick={apply}
-              disabled={loading}
-              className="rounded bg-black px-3 py-1 text-sm text-white disabled:opacity-50"
-            >
+            <button onClick={apply} disabled={loading} className={ui.btnPrimarySm}>
               確定して在庫へ
             </button>
           </div>
 
-          <div className="rounded border bg-gray-50 p-2">
-            <p className="mb-1 text-xs text-gray-500">AIに修正を頼む（例: 卵を2個に、パンを削除、牛乳を追加）</p>
+          <div className={`${ui.card} p-3`}>
+            <p className="mb-1.5 text-xs text-zinc-500">AIに修正を頼む（例: 卵を2個に、パンを削除、牛乳を追加）</p>
             <form
               onSubmit={(e) => {
                 e.preventDefault()
@@ -249,12 +245,9 @@ export function PhotoIngest() {
                 value={instruction}
                 onChange={(e) => setInstruction(e.target.value)}
                 placeholder="修正の指示を入力"
-                className="w-0 min-w-0 flex-1 rounded border p-1 text-sm"
+                className={`${ui.input} w-0 min-w-0 flex-1`}
               />
-              <button
-                disabled={editing}
-                className="shrink-0 rounded bg-gray-800 px-3 py-1 text-sm text-white disabled:opacity-50"
-              >
+              <button disabled={editing} className={`${ui.btnSecondarySm} shrink-0`}>
                 {editing ? '修正中…' : 'AIで修正'}
               </button>
             </form>
