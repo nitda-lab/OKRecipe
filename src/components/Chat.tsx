@@ -10,6 +10,13 @@ import { MARKDOWN_TYPO } from '@/components/markdownStyles'
 type Msg = { role: 'user' | 'assistant'; content: string }
 type ConversationSummary = { id: string; title: string; updatedAt: string }
 
+function formatDateTime(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
 const QUICK = [
   'ありもので作れるレシピを教えて',
   '今週の献立を組んで（使い切り重視）',
@@ -180,11 +187,13 @@ export function Chat() {
             <ul className="flex flex-col">
               {conversations.map((c) => (
                 <li key={c.id} className="flex items-center gap-2 border-b py-1 last:border-0">
-                  <button
-                    onClick={() => openConversation(c.id)}
-                    className={`flex-1 truncate text-left text-sm ${c.id === conversationId ? 'font-bold' : ''}`}
-                  >
-                    {c.title}
+                  <button onClick={() => openConversation(c.id)} className="min-w-0 flex-1 text-left">
+                    <span
+                      className={`block truncate text-sm ${c.id === conversationId ? 'font-bold' : ''}`}
+                    >
+                      {c.title}
+                    </span>
+                    <span className="block text-xs text-gray-400">{formatDateTime(c.updatedAt)}</span>
                   </button>
                   <button
                     onClick={() => deleteConversation(c.id)}
