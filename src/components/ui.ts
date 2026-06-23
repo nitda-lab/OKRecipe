@@ -11,7 +11,7 @@ export const ui = {
   btnSecondarySm:
     'inline-flex items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50',
   input:
-    'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10',
+    'rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-zinc-500 focus:ring-2 focus:ring-zinc-900/10',
   card: 'rounded-xl border border-zinc-200 bg-white shadow-sm',
   chip: 'rounded-full border border-zinc-300 bg-white px-3 py-1 text-xs text-zinc-600 transition-colors hover:bg-zinc-100',
   chipActive:

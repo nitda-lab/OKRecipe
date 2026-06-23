@@ -54,7 +54,7 @@ export default function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="メールアドレス"
-          className={ui.input}
+          className={`${ui.input} w-full`}
         />
         <input
           type="password"
@@ -64,7 +64,7 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           placeholder="パスワード（6文字以上）"
-          className={ui.input}
+          className={`${ui.input} w-full`}
         />
         {error && (
           <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700">{error}</p>

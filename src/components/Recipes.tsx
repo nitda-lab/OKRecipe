@@ -76,14 +76,14 @@ export function Recipes() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="レシピ名"
-            className={ui.input}
+            className={`${ui.input} w-full`}
           />
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="本文（Markdown）"
             rows={5}
-            className={ui.input}
+            className={`${ui.input} w-full`}
           />
           <button onClick={add} className={`${ui.btnPrimarySm} self-start`}>
             追加
