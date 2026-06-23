@@ -1,12 +1,35 @@
+'use client'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+
+const LINKS = [
+  { href: '/inventory', label: '在庫' },
+  { href: '/ingest', label: '取り込み' },
+  { href: '/chat', label: 'チャット' },
+  { href: '/recipes', label: 'レシピ' },
+]
 
 export function NavBar() {
+  const pathname = usePathname()
   return (
-    <nav className="mb-4 flex gap-4 border-b pb-2 text-sm">
-      <Link href="/inventory" className="font-medium">在庫</Link>
-      <Link href="/ingest" className="font-medium">取り込み</Link>
-      <Link href="/chat" className="font-medium">チャット</Link>
-      <Link href="/recipes" className="font-medium">レシピ</Link>
+    <nav className="mb-4 flex gap-1 border-b pb-1 text-sm">
+      {LINKS.map(({ href, label }) => {
+        const active = pathname === href || pathname.startsWith(`${href}/`)
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={active ? 'page' : undefined}
+            className={
+              active
+                ? 'rounded-t border-b-2 border-black bg-gray-100 px-3 py-1 font-bold text-black'
+                : 'rounded-t px-3 py-1 font-medium text-gray-500 hover:text-black'
+            }
+          >
+            {label}
+          </Link>
+        )
+      })}
     </nav>
   )
 }
