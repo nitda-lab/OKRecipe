@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server'
-import { getServerSupabase } from '@/lib/supabaseServer'
+import { requireUser } from '@/lib/apiAuth'
 import { SupabaseConversationRepository } from '@/repositories/supabaseConversationRepository'
 
 export async function GET() {
-  const sb = await getServerSupabase()
-  const { data: auth } = await sb.auth.getUser()
-  if (!auth.user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  const repo = new SupabaseConversationRepository(sb)
-  return NextResponse.json(await repo.list(auth.user.id))
+  const auth = await requireUser()
+  if ('error' in auth) return auth.error
+  return NextResponse.json(await new SupabaseConversationRepository(auth.sb).list(auth.userId))
 }

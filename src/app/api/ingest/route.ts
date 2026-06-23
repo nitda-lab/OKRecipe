@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
-import { getServerSupabase } from '@/lib/supabaseServer'
+import { requireUser } from '@/lib/apiAuth'
 import { createVisionExtractorFromEnv } from '@/lib/ai/vision'
 import { SupabaseIngestLogRepository } from '@/repositories/ingestLogRepository'
 
 export async function POST(req: Request) {
-  const sb = await getServerSupabase()
-  const { data: auth } = await sb.auth.getUser()
-  if (!auth.user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const auth = await requireUser()
+  if ('error' in auth) return auth.error
 
   const body = await req.json()
   const image = typeof body?.image === 'string' ? body.image : null
@@ -22,7 +21,7 @@ export async function POST(req: Request) {
   try {
     const items = await extractor.extract(image, kind)
     try {
-      await new SupabaseIngestLogRepository(sb).record(auth.user.id, kind, JSON.stringify(items))
+      await new SupabaseIngestLogRepository(auth.sb).record(auth.userId, kind, JSON.stringify(items))
     } catch {
       // ログ失敗は握りつぶす（抽出結果は返す）
     }

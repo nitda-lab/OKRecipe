@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { newStreamState, applyStreamChunk, finalizeStreamState, readSSE } from './stream'
 
 function chunk(delta: Record<string, unknown>) {

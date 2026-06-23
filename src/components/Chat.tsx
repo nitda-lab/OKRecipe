@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm'
 import type { PendingAction } from '@/lib/ai/inventoryTools'
 import { normalizeMarkdown } from '@/lib/markdown'
 import { useToast } from '@/components/useToast'
+import { MARKDOWN_TYPO } from '@/components/markdownStyles'
 
 type Msg = { role: 'user' | 'assistant'; content: string }
 type ConversationSummary = { id: string; title: string; updatedAt: string }
@@ -216,7 +217,7 @@ export function Chat() {
           ) : (
             <li
               key={i}
-              className="max-w-full self-start overflow-x-auto rounded bg-gray-100 p-2 text-sm [&_h1]:text-base [&_h1]:font-bold [&_h2]:text-base [&_h2]:font-bold [&_h3]:font-bold [&_li]:my-0.5 [&_ol]:my-1 [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:my-1 [&_strong]:font-semibold [&_table]:my-2 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-gray-300 [&_td]:px-2 [&_td]:py-1 [&_td]:align-top [&_th]:border [&_th]:border-gray-300 [&_th]:bg-gray-200 [&_th]:px-2 [&_th]:py-1 [&_ul]:my-1 [&_ul]:list-disc [&_ul]:pl-5"
+              className={`max-w-full self-start overflow-x-auto rounded bg-gray-100 p-2 text-sm ${MARKDOWN_TYPO}`}
             >
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{normalizeMarkdown(m.content)}</ReactMarkdown>
             </li>

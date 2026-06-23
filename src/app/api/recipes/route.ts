@@ -1,21 +1,19 @@
 import { NextResponse } from 'next/server'
-import { getServerSupabase } from '@/lib/supabaseServer'
+import { requireUser } from '@/lib/apiAuth'
 import { SupabaseRecipeRepository } from '@/repositories/supabaseRecipeRepository'
 
 export async function GET() {
-  const sb = await getServerSupabase()
-  const { data: auth } = await sb.auth.getUser()
-  if (!auth.user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  return NextResponse.json(await new SupabaseRecipeRepository(sb).list(auth.user.id))
+  const auth = await requireUser()
+  if ('error' in auth) return auth.error
+  return NextResponse.json(await new SupabaseRecipeRepository(auth.sb).list(auth.userId))
 }
 
 export async function POST(req: Request) {
-  const sb = await getServerSupabase()
-  const { data: auth } = await sb.auth.getUser()
-  if (!auth.user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const auth = await requireUser()
+  if ('error' in auth) return auth.error
   const body = await req.json()
   if (!body?.title) return NextResponse.json({ error: 'title required' }, { status: 400 })
-  const rec = await new SupabaseRecipeRepository(sb).create(auth.user.id, {
+  const rec = await new SupabaseRecipeRepository(auth.sb).create(auth.userId, {
     title: body.title,
     body: body.body ?? '',
   })

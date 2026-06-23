@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
-import { getServerSupabase } from '@/lib/supabaseServer'
+import { requireUser } from '@/lib/apiAuth'
 import { createDraftEditorFromEnv } from '@/lib/ai/draftEdit'
 import type { ExtractedItem } from '@/lib/ai/vision'
 
 export async function POST(req: Request) {
-  const sb = await getServerSupabase()
-  const { data: auth } = await sb.auth.getUser()
-  if (!auth.user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  const auth = await requireUser()
+  if ('error' in auth) return auth.error
 
   const body = await req.json()
   const items = Array.isArray(body?.items) ? (body.items as ExtractedItem[]) : null

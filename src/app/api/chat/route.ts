@@ -1,4 +1,4 @@
-import { getServerSupabase } from '@/lib/supabaseServer'
+import { requireUser } from '@/lib/apiAuth'
 import { SupabaseInventoryRepository } from '@/repositories/supabaseInventoryRepository'
 import { SupabaseConversationRepository } from '@/repositories/supabaseConversationRepository'
 import { createNanoGptProviderFromEnv } from '@/lib/ai/provider'
@@ -6,9 +6,9 @@ import { runChatAgentStream } from '@/lib/ai/chatAgent'
 import type { ChatMessage } from '@/lib/ai/types'
 
 export async function POST(req: Request) {
-  const sb = await getServerSupabase()
-  const { data: auth } = await sb.auth.getUser()
-  if (!auth.user) return Response.json({ error: 'unauthorized' }, { status: 401 })
+  const auth = await requireUser()
+  if ('error' in auth) return auth.error
+  const { sb, userId } = auth
 
   const body = await req.json()
   const incoming = Array.isArray(body?.messages) ? body.messages : null
@@ -25,7 +25,6 @@ export async function POST(req: Request) {
   const inventoryRepo = new SupabaseInventoryRepository(sb)
   const convoRepo = new SupabaseConversationRepository(sb)
   const provider = createNanoGptProviderFromEnv()
-  const userId = auth.user.id
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
