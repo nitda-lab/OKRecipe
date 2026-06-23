@@ -92,17 +92,19 @@ export default function LoginPage() {
           placeholder="パスワード（6文字以上）"
           className="rounded border p-3"
         />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button disabled={busy} className="rounded bg-black p-3 text-white">
-          ログイン
+        {error && (
+          <p className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-700">{error}</p>
+        )}
+        <button disabled={busy} className="rounded bg-black p-3 text-white disabled:opacity-50">
+          {busy ? '処理中…' : 'ログイン'}
         </button>
         <button
           type="button"
           disabled={busy}
           onClick={() => run('signup')}
-          className="rounded border p-3"
+          className="rounded border p-3 disabled:opacity-50"
         >
-          新規登録（初回のみ）
+          {busy ? '処理中…' : '新規登録（初回のみ）'}
         </button>
       </form>
     </main>
