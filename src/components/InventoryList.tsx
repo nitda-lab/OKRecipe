@@ -29,7 +29,7 @@ export function InventoryList({
               const v = e.target.value.trim()
               if (v && v !== item.quantityText) onUpdate(item.id, v)
             }}
-            className="w-24 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-right text-sm outline-none focus:border-zinc-400 focus:bg-white"
+            className="w-24 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-right text-base outline-none focus:border-zinc-400 focus:bg-white sm:text-sm"
           />
           <button
             onClick={() => onRemove(item.id)}
