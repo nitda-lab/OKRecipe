@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { runChatAgent, runChatAgentStream } from './chatAgent'
+import { runChatAgent, runChatAgentStream, buildSystemPrompt, SYSTEM_PROMPT } from './chatAgent'
 import type { AIProvider, AssistantMessage, ChatMessage, StreamCallbacks } from './types'
 import { InMemoryInventoryRepository } from '@/repositories/inMemoryInventoryRepository'
+import { InMemoryMemoryRepository } from '@/repositories/inMemoryMemoryRepository'
 
 function makeRepo() {
   let n = 0
@@ -94,5 +95,33 @@ describe('runChatAgentStream', () => {
       {},
     )
     expect(out.pending).toEqual([{ type: 'add', name: '牛乳', quantityText: '1本' }])
+  })
+
+  it('saves a memory via remember and reports it in savedMemories', async () => {
+    const repo = makeRepo()
+    const memoryRepo = new InMemoryMemoryRepository({ idFactory: () => 'm-1', clock: () => 't' })
+    const provider = scriptedProvider([
+      { role: 'assistant', content: '', tool_calls: [{ id: 't1', type: 'function', function: { name: 'remember', arguments: JSON.stringify({ text: 'えびアレルギー' }) } }] },
+      { role: 'assistant', content: '覚えておきます。' },
+    ])
+    const out = await runChatAgentStream(
+      { provider, repo, userId: 'u1', memoryRepo },
+      [{ role: 'user', content: 'えびアレルギーなんだ' }],
+      {},
+    )
+    expect(out.savedMemories).toEqual(['えびアレルギー'])
+    expect(await memoryRepo.list('u1')).toHaveLength(1)
+  })
+})
+
+describe('buildSystemPrompt', () => {
+  it('returns the base prompt when there are no memories', () => {
+    expect(buildSystemPrompt([])).toBe(SYSTEM_PROMPT)
+  })
+  it('injects memories into the prompt', () => {
+    const p = buildSystemPrompt(['揚げ物は面倒', 'えびアレルギー'])
+    expect(p).toContain('記憶していること')
+    expect(p).toContain('揚げ物は面倒')
+    expect(p).toContain('えびアレルギー')
   })
 })

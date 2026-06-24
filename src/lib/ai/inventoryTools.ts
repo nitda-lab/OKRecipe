@@ -1,5 +1,6 @@
 import type { ToolCall, ToolSchema } from './types'
 import type { InventoryRepository } from '@/repositories/inventoryRepository'
+import type { MemoryRepository } from '@/repositories/memoryRepository'
 
 export type PendingAction =
   | { type: 'add'; name: string; quantityText: string }
@@ -74,9 +75,30 @@ export const INVENTORY_TOOLS: ToolSchema[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'remember',
+      description:
+        'ユーザーについて料理・食事に関わる継続的な事実を記憶する（確認なしで即保存）。例: 家族の人数、アレルギー、苦手な食材、時短志向、調理器具。一時的な発言や雑談は記憶しない。すでに記憶済みのことは重複して保存しない。',
+      parameters: {
+        type: 'object',
+        properties: {
+          text: { type: 'string', description: '記憶する短い事実（例: 揚げ物は面倒, えびアレルギー）' },
+        },
+        required: ['text'],
+      },
+    },
+  },
 ]
 
-type Ctx = { repo: InventoryRepository; userId: string; pending: PendingAction[] }
+type Ctx = {
+  repo: InventoryRepository
+  userId: string
+  pending: PendingAction[]
+  memoryRepo?: MemoryRepository
+  savedMemories?: string[]
+}
 
 export async function executeTool(call: ToolCall, ctx: Ctx): Promise<string> {
   const args = JSON.parse(call.function.arguments || '{}')
@@ -102,6 +124,13 @@ export async function executeTool(call: ToolCall, ctx: Ctx): Promise<string> {
     case 'save_recipe': {
       ctx.pending.push({ type: 'save_recipe', title: args.title, body: args.body })
       return `レシピ「${args.title}」の保存を提案しました（ユーザー確認待ち）`
+    }
+    case 'remember': {
+      const text = String(args.text ?? '').trim()
+      if (!text) return '記憶する内容が空でした'
+      if (ctx.memoryRepo) await ctx.memoryRepo.create(ctx.userId, text)
+      ctx.savedMemories?.push(text)
+      return `覚えました: ${text}`
     }
     default:
       throw new Error(`unknown tool: ${call.function.name}`)
