@@ -1,23 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { ui } from '@/components/ui'
+import { downscaleDataUrl } from '@/lib/image/downscale'
 
-type Kind = 'receipt' | 'fridge'
 type Mode = 'add' | 'overwrite'
 type Row = { name: string; qtyText: string }
 type Staged = { file: File; url: string }
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
 export function PhotoIngest() {
-  const [kind, setKind] = useState<Kind>('receipt')
   const [mode, setMode] = useState<Mode>('add')
   const [staged, setStaged] = useState<Staged[]>([])
   const [rows, setRows] = useState<Row[]>([])
@@ -37,7 +27,18 @@ export function PhotoIngest() {
     const files = Array.from(e.target.files ?? [])
     if (files.length === 0) return
     setDone(false)
-    setStaged((prev) => [...prev, ...files.map((file) => ({ file, url: URL.createObjectURL(file) }))])
+    setStaged((prev) => {
+      const room = 8 - prev.length
+      if (room <= 0) {
+        setError('写真は一度に8枚までです')
+        return prev
+      }
+      if (files.length > room) setError('写真は一度に8枚までです')
+      return [
+        ...prev,
+        ...files.slice(0, room).map((file) => ({ file, url: URL.createObjectURL(file) })),
+      ]
+    })
     e.target.value = ''
   }
 
@@ -49,28 +50,29 @@ export function PhotoIngest() {
     })
   }
 
-  // 溜めた写真をまとめてAIへ送り、抽出結果を下書きに反映
+  // 溜めた写真を縮小して一度にAIへ送り、統合済みの抽出結果を下書きに反映
   async function send() {
     if (staged.length === 0 || loading) return
     setLoading(true)
     setError(null)
     setDone(false)
     try {
-      const collected: Row[] = []
-      for (const s of staged) {
-        const image = await fileToDataUrl(s.file)
-        const res = await fetch('/api/ingest', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ image, kind }),
-        })
-        const data = await res.json()
-        if (res.ok) collected.push(...(data.items ?? []))
-        else setError(data.error ?? 'failed')
+      const images = await Promise.all(staged.map((s) => downscaleDataUrl(s.file)))
+      const res = await fetch('/api/ingest', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ images }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setRows((prev) => [...prev, ...(data.items ?? [])])
+        staged.forEach((s) => URL.revokeObjectURL(s.url))
+        setStaged([])
+      } else {
+        setError(data.error ?? 'failed')
       }
-      setRows((prev) => [...prev, ...collected])
-      staged.forEach((s) => URL.revokeObjectURL(s.url))
-      setStaged([])
+    } catch (e) {
+      setError((e as Error).message)
     } finally {
       setLoading(false)
     }
@@ -137,18 +139,6 @@ export function PhotoIngest() {
   return (
     <main className="flex flex-col gap-3">
       <h1 className={ui.h1}>写真で取り込み</h1>
-
-      <div className="flex flex-col gap-1">
-        <span className="text-xs text-gray-500">写真の種類</span>
-        <div className="flex gap-2 text-sm">
-          <button onClick={() => setKind('receipt')} className={pill(kind === 'receipt')}>
-            レシート
-          </button>
-          <button onClick={() => setKind('fridge')} className={pill(kind === 'fridge')}>
-            冷蔵庫
-          </button>
-        </div>
-      </div>
 
       <div className="flex flex-col gap-1">
         <span className="text-xs text-gray-500">反映方法</span>
