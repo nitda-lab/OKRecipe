@@ -38,13 +38,17 @@ export default function InventoryPage() {
     await fetch(`/api/inventory/${id}`, { method: 'DELETE' })
     reload()
   }
+  async function removeMany(ids: string[]) {
+    await Promise.all(ids.map((id) => fetch(`/api/inventory/${id}`, { method: 'DELETE' })))
+    reload()
+  }
 
   return (
     <main className="flex flex-col gap-4">
       <h1 className={ui.h1}>冷蔵庫</h1>
       <InventoryItemForm onAdd={add} />
       {loaded ? (
-        <InventoryList items={items} onUpdate={update} onRemove={remove} />
+        <InventoryList items={items} onUpdate={update} onRemove={remove} onRemoveMany={removeMany} />
       ) : (
         <p className="py-10 text-center text-sm text-zinc-400">読み込み中…</p>
       )}

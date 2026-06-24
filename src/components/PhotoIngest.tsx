@@ -87,6 +87,11 @@ export function PhotoIngest() {
   function addRow() {
     setRows((rs) => [...rs, { name: '', qtyText: '' }])
   }
+  function clearDraft() {
+    if (rows.length > 0 && !window.confirm('下書きをすべてクリアしますか？')) return
+    setRows([])
+    setInstruction('')
+  }
 
   async function askAi() {
     if (!instruction.trim() || editing) return
@@ -219,6 +224,9 @@ export function PhotoIngest() {
             </button>
             <button onClick={apply} disabled={loading} className={ui.btnPrimarySm}>
               確定して在庫へ
+            </button>
+            <button onClick={clearDraft} disabled={loading} className={`${ui.btnSecondarySm} ml-auto`}>
+              クリア
             </button>
           </div>
 
