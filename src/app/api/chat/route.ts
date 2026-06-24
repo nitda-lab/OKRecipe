@@ -1,6 +1,7 @@
 import { requireUser } from '@/lib/apiAuth'
 import { SupabaseInventoryRepository } from '@/repositories/supabaseInventoryRepository'
 import { SupabaseConversationRepository } from '@/repositories/supabaseConversationRepository'
+import { SupabaseMemoryRepository } from '@/repositories/supabaseMemoryRepository'
 import { createNanoGptProviderFromEnv } from '@/lib/ai/provider'
 import { runChatAgentStream } from '@/lib/ai/chatAgent'
 import type { ChatMessage } from '@/lib/ai/types'
@@ -24,17 +25,30 @@ export async function POST(req: Request) {
 
   const inventoryRepo = new SupabaseInventoryRepository(sb)
   const convoRepo = new SupabaseConversationRepository(sb)
+  const memoryRepo = new SupabaseMemoryRepository(sb)
   const provider = createNanoGptProviderFromEnv()
+
+  // 記憶しているメモリを読み込み（失敗してもチャットは続行）
+  let memories: string[] = []
+  try {
+    memories = (await memoryRepo.list(userId)).map((m) => m.text)
+  } catch {
+    memories = []
+  }
 
   const encoder = new TextEncoder()
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (event: unknown) => controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'))
       try {
-        const out = await runChatAgentStream({ provider, repo: inventoryRepo, userId }, history, {
-          onToken: (text) => send({ type: 'token', text }),
-          onStatus: (status) => send({ type: 'status', status }),
-        })
+        const out = await runChatAgentStream(
+          { provider, repo: inventoryRepo, userId, memoryRepo, memories },
+          history,
+          {
+            onToken: (text) => send({ type: 'token', text }),
+            onStatus: (status) => send({ type: 'status', status }),
+          },
+        )
 
         // 会話を永続化（ストリーム完了後にまとめて）。失敗してもチャット自体は壊さない。
         let conversationId = incomingConversationId
@@ -52,7 +66,13 @@ export async function POST(req: Request) {
           // 永続化失敗は握りつぶす（履歴が残らないだけ）
         }
 
-        send({ type: 'done', reply: out.reply, pending: out.pending, conversationId })
+        send({
+          type: 'done',
+          reply: out.reply,
+          pending: out.pending,
+          savedMemories: out.savedMemories,
+          conversationId,
+        })
       } catch (e) {
         send({ type: 'error', error: (e as Error).message })
       } finally {
