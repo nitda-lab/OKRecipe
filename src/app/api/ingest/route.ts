@@ -8,18 +8,20 @@ export async function POST(req: Request) {
   if ('error' in auth) return auth.error
 
   const body = await req.json()
-  const image = typeof body?.image === 'string' ? body.image : null
-  const kind = body?.kind === 'receipt' || body?.kind === 'fridge' ? body.kind : null
-  if (!image || !kind) {
+  const images =
+    Array.isArray(body?.images) && body.images.every((x: unknown) => typeof x === 'string')
+      ? (body.images as string[])
+      : null
+  if (!images || images.length === 0) {
     return NextResponse.json(
-      { error: 'image(dataURL) and kind(receipt|fridge) required' },
+      { error: 'images (non-empty array of data URLs) required' },
       { status: 400 },
     )
   }
 
   const extractor = createVisionExtractorFromEnv()
   try {
-    const items = await extractor.extract(image, kind)
+    const { kind, items } = await extractor.extract(images)
     try {
       await new SupabaseIngestLogRepository(auth.sb).record(auth.userId, kind, JSON.stringify(items))
     } catch {
