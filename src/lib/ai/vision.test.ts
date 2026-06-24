@@ -43,6 +43,41 @@ describe('createVisionExtractor', () => {
     expect(parts.some((p: { type: string }) => p.type === 'image_url')).toBe(true)
   })
 
+  it('sends per-kind max_tokens (fridge 2500, receipt 1000)', async () => {
+    const mk = () =>
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({ choices: [{ message: { content: '[]' } }] }),
+          { status: 200 },
+        ),
+      )
+    const base = { apiKey: 'k', baseUrl: 'https://x/v1', model: 'vm' }
+
+    const fFridge = mk()
+    await createVisionExtractor({ ...base, fetchFn: fFridge as unknown as typeof fetch })
+      .extract('data:image/png;base64,AAAA', 'fridge')
+    const bodyFridge = JSON.parse((fFridge.mock.calls[0][1] as RequestInit).body as string)
+    expect(bodyFridge.max_tokens).toBe(2500)
+
+    const fReceipt = mk()
+    await createVisionExtractor({ ...base, fetchFn: fReceipt as unknown as typeof fetch })
+      .extract('data:image/png;base64,AAAA', 'receipt')
+    const bodyReceipt = JSON.parse((fReceipt.mock.calls[0][1] as RequestInit).body as string)
+    expect(bodyReceipt.max_tokens).toBe(1000)
+  })
+
+  it('lets deps.maxTokens override the per-kind default', async () => {
+    const f = vi.fn(async () =>
+      new Response(JSON.stringify({ choices: [{ message: { content: '[]' } }] }), { status: 200 }),
+    )
+    await createVisionExtractor({
+      apiKey: 'k', baseUrl: 'https://x/v1', model: 'vm', maxTokens: 99,
+      fetchFn: f as unknown as typeof fetch,
+    }).extract('data:image/png;base64,AAAA', 'fridge')
+    const body = JSON.parse((f.mock.calls[0][1] as RequestInit).body as string)
+    expect(body.max_tokens).toBe(99)
+  })
+
   it('throws on non-200', async () => {
     const fetchFn = vi.fn(async () => new Response('boom', { status: 500 }))
     const ex = createVisionExtractor({
