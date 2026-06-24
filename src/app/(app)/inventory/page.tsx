@@ -45,7 +45,7 @@ export default function InventoryPage() {
       <div className="flex items-center justify-between">
         <h1 className={ui.h1}>冷蔵庫</h1>
         <Link href="/ingest" className={ui.btnSecondarySm}>
-          📷 写真で取り込み
+          写真で取り込み
         </Link>
       </div>
       <InventoryItemForm onAdd={add} />
