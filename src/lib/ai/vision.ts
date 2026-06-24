@@ -33,7 +33,12 @@ const PROMPTS: Record<'receipt' | 'fridge', string> = {
   receipt:
     'このレシート画像から購入した食材名と個数を抽出してJSON配列だけを返してください。形式: [{"name":"卵","qty_text":"2個"}]。食品以外（袋・税・合計など）は除外。英語/ローマ字表記は日本語に直す。',
   fridge:
-    'この冷蔵庫の写真に見える食材を列挙してJSON配列だけを返してください。形式: [{"name":"卵","qty_text":"2個"}]。個数や量が分かれば自然言語で（不明なら"あり"）。調味料の小瓶など細かすぎるものは主要なものに絞る。',
+    'この冷蔵庫の写真に見える食材を、できるだけ漏れなく全部列挙してJSON配列だけを返してください。形式: [{"name":"卵","qty_text":"2個"}]。棚→ドアポケット→引き出しの順に走査し、見えるものはすべて挙げる。一部しか見えない・包装で隠れていても、判別できれば挙げる。間引かない（調味料の小瓶なども含める）。個数や量が分かれば自然言語で、不明なら"あり"。食品・飲料・食材のみ（容器・家電・宣伝文は除外）。英語/ローマ字表記は日本語に直す。',
+}
+
+const MAX_TOKENS: Record<'receipt' | 'fridge', number> = {
+  receipt: 1000,
+  fridge: 2500,
 }
 
 export type VisionDeps = {
@@ -46,9 +51,9 @@ export type VisionDeps = {
 
 export function createVisionExtractor(deps: VisionDeps) {
   const doFetch = deps.fetchFn ?? fetch
-  const maxTokens = deps.maxTokens ?? 800
   return {
     async extract(imageDataUrl: string, kind: 'receipt' | 'fridge'): Promise<ExtractedItem[]> {
+      const maxTokens = deps.maxTokens ?? MAX_TOKENS[kind]
       const res = await doFetch(`${deps.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${deps.apiKey}` },
