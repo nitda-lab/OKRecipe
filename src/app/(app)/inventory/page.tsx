@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import type { InventoryItem } from '@/domain/inventory'
 import { InventoryList } from '@/components/InventoryList'
 import { InventoryItemForm } from '@/components/InventoryItemForm'
@@ -41,7 +42,12 @@ export default function InventoryPage() {
 
   return (
     <main className="flex flex-col gap-4">
-      <h1 className={ui.h1}>冷蔵庫</h1>
+      <div className="flex items-center justify-between">
+        <h1 className={ui.h1}>冷蔵庫</h1>
+        <Link href="/ingest" className={ui.btnSecondarySm}>
+          写真で取り込み
+        </Link>
+      </div>
       <InventoryItemForm onAdd={add} />
       {loaded ? (
         <InventoryList items={items} onUpdate={update} onRemove={remove} />

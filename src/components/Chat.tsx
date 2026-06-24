@@ -112,6 +112,7 @@ export function Chat() {
             if (!assistant) assistant = ev.reply
             render()
             setPending(ev.pending ?? [])
+            for (const text of (ev.savedMemories ?? []) as string[]) show(`🧠 覚えました: ${text}`)
             if (ev.conversationId) setConversationId(ev.conversationId)
             loadConversations()
           } else if (ev.type === 'error') {

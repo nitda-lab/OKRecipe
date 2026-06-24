@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { INVENTORY_TOOLS, executeTool, type PendingAction } from './inventoryTools'
 import { InMemoryInventoryRepository } from '@/repositories/inMemoryInventoryRepository'
+import { InMemoryMemoryRepository } from '@/repositories/inMemoryMemoryRepository'
 
 function makeRepo() {
   let n = 0
@@ -76,6 +77,22 @@ describe('executeTool', () => {
       { repo, userId: 'u1', pending },
     )
     expect(pending).toEqual([{ type: 'save_recipe', title: 'オムレツ', body: '## 材料\n卵2個' }])
+  })
+
+  it('remember saves to the memory repo immediately and records it in savedMemories', async () => {
+    const repo = makeRepo()
+    const memoryRepo = new InMemoryMemoryRepository({
+      idFactory: () => 'mem-1',
+      clock: () => '2026-06-24T00:00:00.000Z',
+    })
+    const savedMemories: string[] = []
+    const out = await executeTool(
+      call('remember', { text: '揚げ物は面倒' }),
+      { repo, userId: 'u1', pending: [], memoryRepo, savedMemories },
+    )
+    expect(await memoryRepo.list('u1')).toHaveLength(1)
+    expect(savedMemories).toEqual(['揚げ物は面倒'])
+    expect(out).toMatch(/覚え/)
   })
 
   it('throws on unknown tool', async () => {
