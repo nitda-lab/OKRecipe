@@ -1,45 +1,78 @@
 export type ExtractedItem = { name: string; qtyText: string }
+export type ExtractionResult = { kind: 'receipt' | 'fridge'; items: ExtractedItem[] }
+
+function coerceItem(row: unknown): ExtractedItem | null {
+  if (!row || typeof row !== 'object') return null
+  const r = row as Record<string, unknown>
+  const name = typeof r.name === 'string' ? r.name.trim() : ''
+  const qty =
+    typeof r.qtyText === 'string' ? r.qtyText : typeof r.qty_text === 'string' ? r.qty_text : ''
+  if (!name) return null
+  return { name, qtyText: (qty as string).trim() }
+}
+
+// 途中で切れた配列からも、完結した {...} 要素だけを救出する
+function salvageObjects(s: string): ExtractedItem[] {
+  const out: ExtractedItem[] = []
+  let depth = 0
+  let startIdx = -1
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]
+    if (c === '{') {
+      if (depth === 0) startIdx = i
+      depth++
+    } else if (c === '}') {
+      if (depth > 0) depth--
+      if (depth === 0 && startIdx >= 0) {
+        try {
+          const item = coerceItem(JSON.parse(s.slice(startIdx, i + 1)))
+          if (item) out.push(item)
+        } catch {
+          // 不完全な要素はスキップ
+        }
+        startIdx = -1
+      }
+    }
+  }
+  return out
+}
 
 export function parseExtraction(text: string): ExtractedItem[] {
   let s = text.trim()
   // ```json ... ``` / ``` ... ``` フェンス除去
   const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i)
   if (fence) s = fence[1].trim()
-  // 前後に説明文がある場合に備え、配列部分だけを抜き出す
+  // 配列部分だけを抜き出す
   const start = s.indexOf('[')
   const end = s.lastIndexOf(']')
   if (start >= 0 && end > start) s = s.slice(start, end + 1)
-  let data: unknown
   try {
-    data = JSON.parse(s)
+    const data = JSON.parse(s)
+    if (Array.isArray(data)) {
+      return data.map(coerceItem).filter((x): x is ExtractedItem => x !== null)
+    }
   } catch {
-    return []
+    // 切り詰め等で壊れている場合は救出にフォールバック
   }
-  if (!Array.isArray(data)) return []
-  const out: ExtractedItem[] = []
-  for (const row of data) {
-    if (!row || typeof row !== 'object') continue
-    const r = row as Record<string, unknown>
-    const name = typeof r.name === 'string' ? r.name.trim() : ''
-    const qty =
-      typeof r.qtyText === 'string' ? r.qtyText : typeof r.qty_text === 'string' ? r.qty_text : ''
-    if (!name) continue
-    out.push({ name, qtyText: (qty as string).trim() })
-  }
-  return out
+  return salvageObjects(s)
 }
 
-const PROMPTS: Record<'receipt' | 'fridge', string> = {
-  receipt:
-    'このレシート画像から購入した食材名と個数を抽出してJSON配列だけを返してください。形式: [{"name":"卵","qty_text":"2個"}]。食品以外（袋・税・合計など）は除外。英語/ローマ字表記は日本語に直す。',
-  fridge:
-    'この冷蔵庫の写真に見える食材を、できるだけ漏れなく全部列挙してJSON配列だけを返してください。形式: [{"name":"卵","qty_text":"2個"}]。棚→ドアポケット→引き出しの順に走査し、見えるものはすべて挙げる。一部しか見えない・包装で隠れていても、判別できれば挙げる。間引かない（調味料の小瓶なども含める）。個数や量が分かれば自然言語で、不明なら"あり"。食品・飲料・食材のみ（容器・家電・宣伝文は除外）。英語/ローマ字表記は日本語に直す。',
+export function parseResult(text: string): ExtractionResult {
+  const items = parseExtraction(text)
+  const m = text.match(/"kind"\s*:\s*"(receipt|fridge)"/i)
+  const kind = m && m[1].toLowerCase() === 'receipt' ? 'receipt' : 'fridge'
+  return { kind, items }
 }
 
-const MAX_TOKENS: Record<'receipt' | 'fridge', number> = {
-  receipt: 1000,
-  fridge: 2500,
-}
+const UNIFIED_PROMPT =
+  'これは私が今持っている食材を写した1枚以上の写真です（レシート・冷蔵庫の中・机に並べた材料が混在することがあります）。すべての写真を合わせて、手持ちの食材を1つのリストに統合してください。' +
+  'レシートの場合は購入した食品だけを抽出（税・合計・袋・店名など食品以外は除外）。' +
+  '冷蔵庫や並べた食材の写真は、棚→ドアポケット→引き出しの順に走査し、隠れていても判別できれば漏れなく挙げる。' +
+  '複数の写真に同じ物が写っている場合は1つにまとめ重複させない。ただし明らかに別個体が複数あるならその数を反映。' +
+  '個数や量は自然言語で、不明なら"あり"。英語/ローマ字表記は日本語に直す。' +
+  '出力は次の形式のJSONのみ: {"kind":"fridge","items":[{"name":"卵","qty_text":"6個"}]}。kindはレシートが主なら"receipt"、それ以外は"fridge"。'
+
+const VISION_MAX_TOKENS = 3000
 
 export type VisionDeps = {
   apiKey: string
@@ -52,23 +85,19 @@ export type VisionDeps = {
 export function createVisionExtractor(deps: VisionDeps) {
   const doFetch = deps.fetchFn ?? fetch
   return {
-    async extract(imageDataUrl: string, kind: 'receipt' | 'fridge'): Promise<ExtractedItem[]> {
-      const maxTokens = deps.maxTokens ?? MAX_TOKENS[kind]
+    async extract(images: string[]): Promise<ExtractionResult> {
+      const maxTokens = deps.maxTokens ?? VISION_MAX_TOKENS
+      const content = [
+        { type: 'text', text: UNIFIED_PROMPT },
+        ...images.map((url) => ({ type: 'image_url', image_url: { url } })),
+      ]
       const res = await doFetch(`${deps.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: `Bearer ${deps.apiKey}` },
         body: JSON.stringify({
           model: deps.model,
           max_tokens: maxTokens,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: PROMPTS[kind] },
-                { type: 'image_url', image_url: { url: imageDataUrl } },
-              ],
-            },
-          ],
+          messages: [{ role: 'user', content }],
         }),
       })
       if (!res.ok) {
@@ -76,7 +105,7 @@ export function createVisionExtractor(deps: VisionDeps) {
         throw new Error(`vision error ${res.status}: ${t}`)
       }
       const data = await res.json()
-      return parseExtraction(data.choices?.[0]?.message?.content ?? '')
+      return parseResult(data.choices?.[0]?.message?.content ?? '')
     },
   }
 }
